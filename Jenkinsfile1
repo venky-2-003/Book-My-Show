@@ -1,9 +1,8 @@
-
 pipeline {
     agent any
     tools {
         jdk 'jdk17'
-        nodejs 'note23'
+        nodejs 'node23'
     }
     environment {
         SCANNER_HOME = tool 'sonar-scanner'
@@ -96,17 +95,6 @@ pipeline {
                 docker logs bms
                 '''
             }
-        }
-    }
-    post {
-        always {
-            emailext attachLog: true,
-                subject: "'${currentBuild.result}'",
-                body: "Project: ${env.JOB_NAME}<br/>" +
-                      "Build Number: ${env.BUILD_NUMBER}<br/>" +
-                      "URL: ${env.BUILD_URL}<br/>",
-                to: 'kastrokiran@gmail.com',
-                attachmentsPattern: 'trivyfs.txt,trivyimage.txt'
         }
     }
 }
