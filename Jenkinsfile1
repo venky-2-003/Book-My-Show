@@ -22,20 +22,24 @@ pipeline {
             }
         }
 
-        // ✅ Optimized SonarQube Stage
+        // ✅ Fixed SonarQube Analysis Stage with Node Path Export
         stage('SonarQube Analysis') {
             steps {
                 withSonarQubeEnv('sonar-server') {
-                    sh '''
-                    export SONAR_SCANNER_OPTS="-Xmx1024m"
-                    $SCANNER_HOME/bin/sonar-scanner \
-                    -Dsonar.projectKey=BMS \
-                    -Dsonar.projectName="BookMyShow" \
-                    -Dsonar.sources=bookmyshow-app \
-                    -Dsonar.exclusions=**/node_modules/**,**/test/**,**/build/**,**/.git/**,**/*.json \
-                    -Dsonar.host.url=$SONAR_HOST_URL \
-                    -Dsonar.login=$SONAR_AUTH_TOKEN
-                    '''
+                    script {
+                        def nodeHome = tool 'node23'
+                        sh """
+                        export PATH=${nodeHome}/bin:\$PATH
+                        export SONAR_SCANNER_OPTS="-Xmx1024m"
+                        $SCANNER_HOME/bin/sonar-scanner \
+                            -Dsonar.projectKey=BMS \
+                            -Dsonar.projectName="BookMyShow" \
+                            -Dsonar.sources=bookmyshow-app \
+                            -Dsonar.exclusions=**/node_modules/**,**/test/**,**/build/**,**/.git/**,**/*.json \
+                            -Dsonar.host.url=$SONAR_HOST_URL \
+                            -Dsonar.token=$SONAR_AUTH_TOKEN
+                        """
+                    }
                 }
             }
         }
