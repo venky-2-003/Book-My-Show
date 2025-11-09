@@ -2,6 +2,7 @@ pipeline {
     agent any
 
     tools {
+        // Make sure these names match Jenkins tool configuration
         jdk 'jdk17'
         maven 'maven3'
     }
@@ -14,12 +15,14 @@ pipeline {
 
         stage('Clean Workspace') {
             steps {
+                echo "Cleaning workspace..."
                 cleanWs()
             }
         }
 
         stage('Checkout from Git') {
             steps {
+                echo "Cloning Git repository..."
                 git url: 'https://github.com/KastroVKiran/Book-My-Show.git', branch: 'main'
                 sh 'ls -la'
             }
@@ -27,10 +30,11 @@ pipeline {
 
         stage('SonarQube Analysis') {
             steps {
+                echo "Starting SonarQube Analysis..."
                 withSonarQubeEnv('sonar-server') {
                     sh '''
                     cd bookmyshow-app
-                    echo "Running SonarQube Analysis faster..."
+                    echo "Running SonarQube Analysis..."
                     $SCANNER_HOME/bin/sonar-scanner \
                       -Dsonar.projectKey=BMS \
                       -Dsonar.projectName="BookMyShow" \
@@ -46,25 +50,29 @@ pipeline {
 
         stage('Quality Gate') {
             steps {
+                echo "Checking SonarQube Quality Gate..."
                 timeout(time: 2, unit: 'MINUTES') {
                     waitForQualityGate abortPipeline: true
                 }
             }
         }
 
-        stage('Install Dependencies') {
+        stage('Build with Maven') {
             steps {
+                echo "Building project using Maven..."
                 sh '''
                 cd bookmyshow-app
-                npm install
+                mvn clean package -DskipTests
                 '''
             }
         }
 
         stage('Trivy FS Scan') {
             steps {
+                echo "Running Trivy file system scan..."
                 sh '''
                 trivy fs . > trivy-fs-report.txt || true
+                echo "===== Trivy Scan Report ====="
                 cat trivy-fs-report.txt
                 '''
             }
@@ -72,6 +80,7 @@ pipeline {
 
         stage('Docker Build & Push') {
             steps {
+                echo "Building and pushing Docker image..."
                 script {
                     docker.withRegistry('https://index.docker.io/v1/', 'dockerhub-credentials') {
                         def app = docker.build("venky003/bookmyshow:latest", "./bookmyshow-app")
@@ -81,13 +90,24 @@ pipeline {
             }
         }
 
-        stage('Deploy to Container') {
+        stage('Deploy to Kubernetes') {
             steps {
+                echo "Deploying to Kubernetes..."
                 sh '''
                 kubectl apply -f deployment.yml
                 kubectl apply -f service.yml
+                kubectl get pods
                 '''
             }
+        }
+    }
+
+    post {
+        success {
+            echo "✅ Pipeline executed successfully!"
+        }
+        failure {
+            echo "❌ Pipeline failed. Please check the logs."
         }
     }
 }
